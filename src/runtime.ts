@@ -173,6 +173,8 @@ class LiteralMetaType extends BasicMetaType<any> implements MetaType<any> {
 const literalType = (literal: any) => new LiteralMetaType(literal)
 
 // TODO: Add Enum types
+// TODO: Add Object (structural) types
+// TODO: Add Named types, may want to add this to the evaluator
 
 const tsr = {
   any: AnyType,
