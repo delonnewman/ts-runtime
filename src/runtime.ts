@@ -74,6 +74,7 @@ const ObjectType = objectType('Object', () => ({}))
 const NumberType = objectType('Number', () => 1)
 const StringType = objectType('String', () => "")
 const BooleanType = objectType('Boolean', () => true)
+const SymbolType = objectType('Symbol', () => Symbol('test'))
 const NullType = new SimpleMetaType<null>('null', (value: any) => value === null, () => null)
 const UndefinedType = new SimpleMetaType<undefined>('undefined', (value: any) => value === void 0, () => undefined)
 
@@ -163,7 +164,14 @@ class UnionMetaType extends GenericMetaType implements MetaType<any> {
 const unionType = (...types: Array<MetaType<any>>) =>
   types.reduce((a, b) => new UnionMetaType(a, b))
 
-// TODO: Add Symbol
+class LiteralMetaType extends BasicMetaType<any> implements MetaType<any> {
+  constructor(literal: any) {
+    super(literal.toString(), (value: any) => value === literal, () => literal)
+  }
+}
+
+const literalType = (literal: any) => new LiteralMetaType(literal)
+
 // TODO: Add Enum types
 
 const tsr = {
@@ -175,12 +183,14 @@ const tsr = {
   null: NullType,
   undefined: UndefinedType,
   void: UndefinedType,
+  Symbol: SymbolType,
   Array: ArrayType,
   Tuple: TupleType,
   Arguments: ArgumentsType,
   FunctionExpression: FunctionExpressionType,
   Union: unionType,
   Or: unionType,
+  Literal: literalType,
 }
 
 export default tsr

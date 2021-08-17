@@ -39,6 +39,12 @@ test('boolean will return true if the value is true or false', () => {
   expect(bool.satisfies(2)).toBe(false)
 })
 
+test('Symbol will return true if the value is a symbol', () => {
+  let sym = tsr.Symbol
+  expect(sym.satisfies(sym.generate())).toBe(true)
+  expect(sym.satisfies(3)).toBe(false)
+})
+
 test('null will return true if the value is null', () => {
   let nullType = tsr.null
   expect(nullType.satisfies(null)).toBe(true)
@@ -82,4 +88,10 @@ test("Union will return true if the value matches any of it's types", () => {
   expect(strOrNum.satisfies("1")).toBe(true)
   expect(strOrNum.satisfies([1])).toBe(false)
   expect(strOrNum.satisfies(false)).toBe(false)
+})
+
+test("Literal will return true if the value is identical to it's type", () => {
+  expect(tsr.Literal("hello").satisfies("hello")).toBe(true)
+  expect(tsr.Literal("hello").satisfies(1)).toBe(false)
+  expect(tsr.Literal("hello").satisfies("world")).toBe(false)
 })
