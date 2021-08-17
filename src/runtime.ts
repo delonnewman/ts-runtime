@@ -166,6 +166,18 @@ class UnionMetaType extends GenericMetaType implements MetaType<any> {
 const unionType = (...types: Array<MetaType<any>>) =>
   types.reduce((a, b) => new UnionMetaType(a, b))
 
+
+class IntersectionMetaType extends GenericMetaType implements MetaType<any> {
+  constructor(typeA: MetaType<any>, typeB: MetaType<any>) {
+    let predicate = (value: any) => typeA.satisfies(value) && typeB.satisfies(value)
+    let generator = () => typeA.generate()
+    super(`${typeA.name} & ${typeB.name}`, AnyType.predicate, generator, predicate, [typeA, typeB])
+  }
+}
+
+const intersectionType = (...types: Array<MetaType<any>>) =>
+  types.reduce((a, b) => new IntersectionMetaType(a, b))
+
 class LiteralMetaType extends BasicMetaType<any> implements MetaType<any> {
   constructor(literal: any) {
     super(literal.toString(), (value: any) => value === literal, () => literal)
@@ -173,6 +185,11 @@ class LiteralMetaType extends BasicMetaType<any> implements MetaType<any> {
 }
 
 const literalType = (literal: any) => new LiteralMetaType(literal)
+
+class Property {
+  readonly name: string
+  readonly type: MetaType<any>
+}
 
 // TODO: Add Enum types
 // TODO: Add Object (structural) types
@@ -194,6 +211,8 @@ const tsr = {
   FunctionExpression: FunctionExpressionType,
   Union: unionType,
   Or: unionType,
+  Intersection: intersectionType,
+  And: intersectionType,
   Literal: literalType,
 }
 
