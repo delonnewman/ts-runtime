@@ -53,9 +53,24 @@ test('undefined will return true if the value is null', () => {
   expect(undef.satisfies(1)).toBe(false)
 })
 
-test("array will return true if the value is an array and it's elements match the extention type", () => {
-  let array = tsr.Array
-  expect(array.satisfies(tsr.any, [1, "2", 3])).toBe(true)
-  expect(array.satisfies(tsr.number, [1, "2", 3])).toBe(false)
-  expect(array.satisfies(tsr.number, [1, 2, 3])).toBe(true)
+test("Array will return true if the value is an array and it's elements match the extention type", () => {
+  let arrayAny = tsr.Array(tsr.any)
+  let arrayNum = tsr.Array(tsr.number)
+  expect(arrayAny.satisfies([1, "2", 3])).toBe(true)
+  expect(arrayNum.satisfies([1, "2", 3])).toBe(false)
+  expect(arrayNum.satisfies([1, 2, 3])).toBe(true)
+})
+
+test("Tuple will return true if the value is a tuple and it's elements match the extention types", () => {
+  let tuple = tsr.Tuple(tsr.string, tsr.number)
+  expect(tuple.satisfies(["Peter", 23])).toBe(true)
+  expect(tuple.satisfies([true, 47])).toBe(false)
+  expect(tuple.satisfies(23)).toBe(false)
+})
+
+test("Function will return true if the value is a function and it's arity matches the number of it's argument types", () => {
+  let fn = tsr.Function()(tsr.Arguments(tsr.string), tsr.string)
+  expect(fn.satisfies(function(name) { return name }))
+  expect(fn.satisfies(function() { })).toBe(false)
+  expect(fn.satisfies(34)).toBe(false)
 })

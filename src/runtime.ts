@@ -1,81 +1,65 @@
 type SimpleTypePredicate = (value: any) => boolean
-type GenericTypePredicate = (extType: TypePredicate) => TypePredicate
+type GenericTypePredicate = (value: any, ...extTypes: Array<MetaType<any>>) => boolean
 type TypePredicate =
   | SimpleTypePredicate
   | GenericTypePredicate
 
+type Generator<T> = (...args: any[]) => T
+
 interface MetaType<T> {
-  getName(): string
-  getPredicate(): TypePredicate
-  generate(...args): T
-  satisfies(value: any, other?: any): boolean
+  readonly name: string
+  readonly predicate: TypePredicate
+  generate(...args: any[]): T
+  satisfies(value: any): boolean
 }
 
+class BasicMetaType<T> implements MetaType<T> {
+  readonly name: string
+  readonly predicate: TypePredicate
+  protected generator: Generator<T>
 
-class SimpleMetaType<T> implements MetaType<T> {
-  private name: string
-  private predicate: SimpleTypePredicate
-  private generator: () => T
-
-  constructor(name: string, predicate: SimpleTypePredicate, generator: () => T) {
+  constructor(name: string, predicate: SimpleTypePredicate, generator: Generator<T>) {
     this.name = name
     this.predicate = predicate
     this.generator = generator
   }
 
-  generate(): T {
-    return this.generator()
+  generate(...args: any[]): T {
+    return this.generator(...args)
   }
 
   satisfies(value: any): boolean {
     return this.predicate(value)
   }
-
-  getName(): string {
-    return this.name
-  }
-
-  getPredicate(): SimpleTypePredicate {
-    return this.predicate
-  }
 }
 
-class GenericMetaType<T> implements MetaType<T> {
-  private name: string
-  private predicate: GenericTypePredicate
-  private generator: (extGen: () => any) => T
+class SimpleMetaType<T> extends BasicMetaType<T> implements MetaType<T> {
+  readonly predicate: SimpleTypePredicate
+}
 
-  constructor(name: string, predicate: GenericTypePredicate, generator: () => T) {
-    this.name = name
-    this.predicate = predicate
-    this.generator = generator
+class GenericMetaType extends BasicMetaType<any> implements MetaType<any> {
+  readonly predicate: GenericTypePredicate
+  private base: SimpleTypePredicate
+  private extTypes: Array<MetaType<any>>
+
+  constructor(name: string, predicate: GenericTypePredicate, generator: Generator<any>, base: SimpleTypePredicate, extTypes: Array<MetaType<any>>) {
+    super(name, predicate, generator)
+    this.base = base
+    this.extTypes = extTypes
   }
 
-  generate(extGen: () => any): T {
+  generate(extGen: Generator<any>): any {
     return this.generator(extGen)
   }
 
-  satisfies(value: any, extType: MetaType<any>): boolean {
-    // TODO: will have to unravel the predicate
-    if (extType instanceof SimpleMetaType)
-      return this.predicate(extType.getPredicate())(value)
-  }
-
-  getName(): string {
-    return this.name
-  }
-
-  getPredicate(): GenericTypePredicate {
-    return this.predicate
+  satisfies(value: any): boolean {
+    return this.base(value) && this.predicate(value, ...this.extTypes)
   }
 }
 
 const objectTypePredicate = (type: string): SimpleTypePredicate => (
   (value: any) => Object.prototype.toString.call(value) === `[object ${type}]`
 )
-
-const genericTypePredicate = (baseType: SimpleTypePredicate, f: (value: any, extType: TypePredicate) => boolean): GenericTypePredicate =>
-  (extType: TypePredicate): TypePredicate => (value: any) => baseType(value) && f(value, extType)
 
 function objectType<T>(type: string, generator: () => T): SimpleMetaType<T> {
   return new SimpleMetaType<T>(type.toLowerCase(), objectTypePredicate(type), generator)
@@ -91,14 +75,74 @@ const UndefinedType = new SimpleMetaType<undefined>('undefined', (value: any) =>
 
 const isArray = objectTypePredicate('Array')
 
-const genericArray: GenericTypePredicate = genericTypePredicate(isArray, (array, extType) =>
-  array.reduce((res: boolean, val: any) => res && extType(val), true))
+const genericType = (name: string, base: SimpleTypePredicate, predicate: GenericTypePredicate, generator: Generator<any>) =>
+  (...extTypes: Array<MetaType<any>>) =>
+    new GenericMetaType(`${name}<${extTypes.map((t) => t.name).join(', ')}>`, predicate, generator, base, extTypes)
 
-const ArrayType = new GenericMetaType<Array<any>>('Array<T>', genericArray, () => [])
+const genericArray: GenericTypePredicate = (array: Array<any>, extType: SimpleMetaType<any>) =>
+  array.reduce((res: boolean, val: any) => res && extType.satisfies(val), true)
 
+const ArrayType = genericType('Array', isArray, genericArray, () => [])
+
+class TupleMetaType extends GenericMetaType implements MetaType<any> {
+  readonly length: number
+
+  constructor(name: string | null, extTypes: Array<MetaType<any>>) {
+    name = name || `[${extTypes.map((t) => t.name).join(', ')}]`
+    const generator = () => extTypes.map((t) => t.generate())
+
+    const predicate = (array: any[]) => {
+      let res = true
+      for (let i = 0; i < array.length; i++) {
+        res = extTypes[i].satisfies(array[i])
+        if (res == false) return res
+      }
+      return res
+    }
+
+    super(name, isArray, generator, predicate, extTypes)
+
+    this.length = extTypes.length
+
+  }
+}
+
+const genericTupleType = (name: string = null) =>
+  (...extTypes: Array<MetaType<any>>) =>
+    new TupleMetaType(name, extTypes)
+
+const TupleType = genericTupleType()
+
+const ArgumentsType = genericTupleType('Arguments')
 const isFunction = objectTypePredicate('Function')
 
-const genericFunction: GenericTypePredicate = genericTypePredicate(isFunction, (f, extType) => true)
+class FunctionMetaType extends GenericMetaType implements MetaType<any> {
+  protected generator: null
+  private anonymous: boolean
+
+  constructor(name: string | null, argumentType: TupleMetaType, returnType: MetaType<any>) {
+    const predicate = (f: Function) => {
+      return f.length === argumentType.length
+    }
+
+    super(name || 'Function', isFunction, null, predicate, [argumentType, returnType])
+
+    this.anonymous = name == null
+  }
+
+  isAnonymous(): boolean {
+    return this.anonymous
+  }
+
+  generate(): Function {
+    return () => null
+  }
+}
+
+const functionType = (name: string = null) =>
+  (argumentsType: TupleMetaType, returnType: MetaType<any>) =>
+    new FunctionMetaType(name, argumentsType, returnType)
+
 
 const tsr = {
   any: AnyType,
@@ -109,6 +153,9 @@ const tsr = {
   null: NullType,
   undefined: UndefinedType,
   Array: ArrayType,
+  Tuple: TupleType,
+  Arguments: ArgumentsType,
+  Function: functionType,
 }
 
 export default tsr
