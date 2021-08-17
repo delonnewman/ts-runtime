@@ -133,6 +133,8 @@ class FunctionMetaType extends GenericMetaType implements MetaType<any> {
 
     name = name || `(${argumentType.name}) => ${returnType.name}`
 
+    // NOTE: it may make sense to make this accept a FunctionCall or similar type
+    // and to the type checking on the parameters
     super(name, isFunction, null, predicate, [argumentType, returnType])
 
     this.anonymous = name == null
