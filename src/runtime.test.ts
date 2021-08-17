@@ -69,7 +69,7 @@ test("Tuple will return true if the value is a tuple and it's elements match the
 })
 
 test("Function will return true if the value is a function and it's arity matches the number of it's argument types", () => {
-  let fn = tsr.Function()(tsr.Arguments(tsr.string), tsr.string)
+  let fn = tsr.FunctionExpression(tsr.Arguments(tsr.string), tsr.string)
   expect(fn.satisfies(function(name) { return name }))
   expect(fn.satisfies(function() { })).toBe(false)
   expect(fn.satisfies(34)).toBe(false)

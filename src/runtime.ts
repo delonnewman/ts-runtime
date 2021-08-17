@@ -55,6 +55,10 @@ class GenericMetaType extends BasicMetaType<any> implements MetaType<any> {
   satisfies(value: any): boolean {
     return this.base(value) && this.predicate(value, ...this.extTypes)
   }
+
+  extentionTypes(): Array<MetaType<any>> {
+    return this.extTypes
+  }
 }
 
 const objectTypePredicate = (type: string): SimpleTypePredicate => (
@@ -103,7 +107,6 @@ class TupleMetaType extends GenericMetaType implements MetaType<any> {
     super(name, isArray, generator, predicate, extTypes)
 
     this.length = extTypes.length
-
   }
 }
 
@@ -113,7 +116,9 @@ const genericTupleType = (name: string = null) =>
 
 const TupleType = genericTupleType()
 
-const ArgumentsType = genericTupleType('Arguments')
+const ArgumentsType = (...extTypes: Array<MetaType<any>>) =>
+  new TupleMetaType(extTypes.map((t) => t.name).join(', '), extTypes)
+
 const isFunction = objectTypePredicate('Function')
 
 class FunctionMetaType extends GenericMetaType implements MetaType<any> {
@@ -125,7 +130,9 @@ class FunctionMetaType extends GenericMetaType implements MetaType<any> {
       return f.length === argumentType.length
     }
 
-    super(name || 'Function', isFunction, null, predicate, [argumentType, returnType])
+    name = name || `(${argumentType.name}) => ${returnType.name}`
+
+    super(name, isFunction, null, predicate, [argumentType, returnType])
 
     this.anonymous = name == null
   }
@@ -143,6 +150,7 @@ const functionType = (name: string = null) =>
   (argumentsType: TupleMetaType, returnType: MetaType<any>) =>
     new FunctionMetaType(name, argumentsType, returnType)
 
+const FunctionExpressionType = functionType()
 
 const tsr = {
   any: AnyType,
@@ -155,7 +163,7 @@ const tsr = {
   Array: ArrayType,
   Tuple: TupleType,
   Arguments: ArgumentsType,
-  Function: functionType,
+  FunctionExpression: FunctionExpressionType,
 }
 
 export default tsr
