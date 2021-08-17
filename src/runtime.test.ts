@@ -74,3 +74,12 @@ test("Function will return true if the value is a function and it's arity matche
   expect(fn.satisfies(function() { })).toBe(false)
   expect(fn.satisfies(34)).toBe(false)
 })
+
+test("Union will return true if the value matches any of it's types", () => {
+  let or = tsr.Union
+  let strOrNum = or(tsr.string, tsr.number)
+  expect(strOrNum.satisfies(1)).toBe(true)
+  expect(strOrNum.satisfies("1")).toBe(true)
+  expect(strOrNum.satisfies([1])).toBe(false)
+  expect(strOrNum.satisfies(false)).toBe(false)
+})

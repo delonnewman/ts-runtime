@@ -152,9 +152,19 @@ const functionType = (name: string = null) =>
 
 const FunctionExpressionType = functionType()
 
-// TODO: Add Symbol, perhaps add void
+class UnionMetaType extends GenericMetaType implements MetaType<any> {
+  constructor(typeA: MetaType<any>, typeB: MetaType<any>) {
+    let predicate = (value: any) => typeA.satisfies(value) || typeB.satisfies(value)
+    let generator = () => typeA.generate()
+    super(`${typeA.name} | ${typeB.name}`, AnyType.predicate, generator, predicate, [typeA, typeB])
+  }
+}
+
+const unionType = (...types: Array<MetaType<any>>) =>
+  types.reduce((a, b) => new UnionMetaType(a, b))
+
+// TODO: Add Symbol
 // TODO: Add Enum types
-// TODO: Add Union types
 
 const tsr = {
   any: AnyType,
@@ -164,10 +174,13 @@ const tsr = {
   boolean: BooleanType,
   null: NullType,
   undefined: UndefinedType,
+  void: UndefinedType,
   Array: ArrayType,
   Tuple: TupleType,
   Arguments: ArgumentsType,
   FunctionExpression: FunctionExpressionType,
+  Union: unionType,
+  Or: unionType,
 }
 
 export default tsr
