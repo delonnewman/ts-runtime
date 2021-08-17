@@ -152,6 +152,10 @@ const functionType = (name: string = null) =>
 
 const FunctionExpressionType = functionType()
 
+// TODO: Add Symbol, perhaps add void
+// TODO: Add Enum types
+// TODO: Add Union types
+
 const tsr = {
   any: AnyType,
   object: ObjectType,
