@@ -209,7 +209,12 @@ class ObjectMetaType extends BasicMetaType<any> implements MetaType<any> {
       return true
     }
 
-    const generator = () => ({})
+    const generator = () => {
+      return this.properties.reduce((obj, prop) => {
+        obj[prop.name] = prop.type.generate()
+        return obj
+      }, {})
+    }
 
     const propNames = properties
       .map((prop) => `${prop.name}: ${prop.type.name}`)
