@@ -95,3 +95,13 @@ test("Literal will return true if the value is identical to it's type", () => {
   expect(tsr.Literal("hello").satisfies(1)).toBe(false)
   expect(tsr.Literal("hello").satisfies("world")).toBe(false)
 })
+
+test("ObjectStruct will return true if the value's properties corresponds to the appropriate types", () => {
+  let struct = tsr.ObjectStruct(
+    tsr.ObjectProperty('name', tsr.string),
+    tsr.ObjectProperty('age', tsr.number),
+  )
+  expect(struct.satisfies({ name: "Peter", age: 56 })).toBe(true)
+  expect(struct.satisfies({ name: "Peter", age: 56, favoriteFood: 'pizza' })).toBe(true)
+  expect(struct.satisfies({ name: "Peter", age: "56" })).toBe(false)
+})

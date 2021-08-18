@@ -70,11 +70,11 @@ function objectType<T>(type: string, generator: () => T): SimpleMetaType<T> {
 }
 
 const AnyType = new SimpleMetaType<any>('any', (_: any) => true, () => 1)
-const ObjectType = objectType('Object', () => ({}))
-const NumberType = objectType('Number', () => 1)
-const StringType = objectType('String', () => "")
-const BooleanType = objectType('Boolean', () => true)
-const SymbolType = objectType('Symbol', () => Symbol('test'))
+const ObjectType = objectType<object>('Object', () => ({}))
+const NumberType = objectType<number>('Number', () => 1)
+const StringType = objectType<string>('String', () => "")
+const BooleanType = objectType<boolean>('Boolean', () => true)
+const SymbolType = objectType<Symbol>('Symbol', () => Symbol('test'))
 const NullType = new SimpleMetaType<null>('null', (value: any) => value === null, () => null)
 const UndefinedType = new SimpleMetaType<undefined>('undefined', (value: any) => value === void 0, () => undefined)
 
@@ -186,13 +186,45 @@ class LiteralMetaType extends BasicMetaType<any> implements MetaType<any> {
 
 const literalType = (literal: any) => new LiteralMetaType(literal)
 
-class Property {
+class PropertyMetaType {
   readonly name: string
   readonly type: MetaType<any>
+
+  constructor(name: string, type: MetaType<any>) {
+    this.name = name
+    this.type = type
+  }
 }
 
+class ObjectMetaType extends BasicMetaType<any> implements MetaType<any> {
+  readonly properties: PropertyMetaType[]
+
+  constructor(properties: PropertyMetaType[]) {
+    const predicate = (value: any) => {
+      if (!ObjectType.satisfies(value)) return false
+      for (let i = 0; i < this.properties.length; i++) {
+        let prop = this.properties[i]
+        if (!prop.type.satisfies(value[prop.name])) return false
+      }
+      return true
+    }
+
+    const generator = () => ({})
+
+    const propNames = properties
+      .map((prop) => `${prop.name}: ${prop.type.name}`)
+      .join(', ')
+
+    super(`{ ${propNames} }`, predicate, generator)
+
+    this.properties = properties
+  }
+}
+
+const objectStructType = (...properties: PropertyMetaType[]) => new ObjectMetaType(properties)
+const objectPropertyType = (name: string, type: MetaType<any>) => new PropertyMetaType(name, type)
+
 // TODO: Add Enum types
-// TODO: Add Object (structural) types
 // TODO: Add Named types, may want to add this to the evaluator
 
 const tsr = {
@@ -214,6 +246,8 @@ const tsr = {
   Intersection: intersectionType,
   And: intersectionType,
   Literal: literalType,
+  ObjectStruct: objectStructType,
+  ObjectProperty: objectPropertyType,
 }
 
 export default tsr
